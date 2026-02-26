@@ -37,7 +37,26 @@ int main(int argc, char *argv[])
         if (recv_len > 0)
         {
             response_buffer[recv_len] = '\0'; // Null-terminate the received data
-            printf("Received message from client: %s\n", response_buffer);
+            printf("Received message from client:");
+
+            for (ssize_t i = 0; i < recv_len; i++)
+            {
+                printf(" %02x", (unsigned char)response_buffer[i]);
+            }
+            printf("\n");
+
+            struct dns_header *header = (struct dns_header *)response_buffer;
+            printf("DNS Header:\n");
+            printf("  ID: %u\n", ntohs(header->id));
+            printf("  Flags: %u\n", ntohs(header->flags));
+            printf("  Questions: %u\n", ntohs(header->qdcount));
+            printf("  Answer RRs: %u\n", ntohs(header->ans_count));
+            printf("  Authority RRs: %u\n", ntohs(header->auth_count));
+            printf("  Additional RRs: %u\n", ntohs(header->add_count));
+                }
+        else if (recv_len == -1)
+        {
+            perror("recvfrom failed");
         }
     }
 }
