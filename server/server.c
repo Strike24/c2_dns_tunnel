@@ -28,10 +28,12 @@ int main(int argc, char *argv[])
     // Server loop, waiting for incoming messages
     while (1)
     {
-        char response_buffer[1024];
+        char response_buffer[1024] = {0};
+
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
 
+        printf("Waiting for incoming messages on port %d...\n", PORT);
         ssize_t recv_len = recvfrom(server_fd, response_buffer, sizeof(response_buffer) - 1, 0,
                                     (struct sockaddr *)&client_addr, &client_addr_len);
         if (recv_len > 0)
@@ -46,17 +48,47 @@ int main(int argc, char *argv[])
             printf("\n");
 
             struct dns_header *header = (struct dns_header *)response_buffer;
-            printf("DNS Header:\n");
-            printf("  ID: %u\n", ntohs(header->id));
-            printf("  Flags: %u\n", ntohs(header->flags));
-            printf("  Questions: %u\n", ntohs(header->qdcount));
-            printf("  Answer RRs: %u\n", ntohs(header->ans_count));
-            printf("  Authority RRs: %u\n", ntohs(header->auth_count));
-            printf("  Additional RRs: %u\n", ntohs(header->add_count));
-                }
+            char domain_name[256] = {0};
+            domain_name[0] = '\0';
+            int offset = sizeof(struct dns_header);
+            int bytes_read = parse_domain_name(response_buffer, offset, domain_name, sizeof(domain_name));
+            if (bytes_read > 0)
+            {
+                printf("Parsed domain name: %s\n", domain_name);
+            }
+        }
         else if (recv_len == -1)
         {
             perror("recvfrom failed");
         }
     }
+}
+
+int parse_domain_name(const char *buffer, int offset, char *domain_name, int max_len)
+{
+    unsigned char *start = (unsigned char *)buffer + offset;
+    unsigned char *reader = start;
+    int section_len = *reader;
+    int domain_name_len = 0;
+    while (section_len > 0)
+    {
+        reader++;
+        if (domain_name_len + section_len >= max_len)
+        {
+            fprintf(stderr, "Domain name too long\n");
+            return -1;
+        }
+        strncat(domain_name, (char *)reader, section_len);
+        domain_name_len += section_len;
+        reader += section_len;
+        if (*reader != 0)
+        {
+            domain_name[domain_name_len] = '.';
+            domain_name[domain_name_len + 1] = '\0';
+            domain_name_len++;
+        }
+        section_len = *reader;
+    }
+    int bytes_read = (reader - start) + 1; // +1 for the null byte
+    return bytes_read;
 }
