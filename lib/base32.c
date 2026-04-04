@@ -62,7 +62,7 @@ to_uchar(char ch)
 void base32_encode(const char *restrict in, size_t inlen,
                    char *restrict out, size_t outlen)
 {
-    static const char b32str[32] =
+    static const char b32str[33] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
     while (inlen && outlen)

@@ -23,6 +23,10 @@ struct dns_header
 } __attribute__((packed));
 
 // Function prototype for parsing domain names from DNS queries
-int parse_domain_name(const char *buffer, int offset, char *domain_name, int max_len);
+int parse_domain_name(const char *buffer, char *domain_name, int max_len);
 
+// Initializes socket and bind port
+int init_socket(struct sockaddr_in *server_addr);
+
+int send_response(int server_fd, struct dns_header *header, struct sockaddr_in *client_addr, socklen_t client_addr_len);
 #endif // SERVER_H

@@ -1,6 +1,29 @@
 #include "server.h"
 #define PORT 8053
 
+int init_socket(struct sockaddr_in *server_addr)
+{
+    // Create socket
+    int server_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (server_fd == -1)
+    {
+        perror("socket creation failed");
+        return -1;
+    }
+
+    // Bind socket to the address
+    int bind_result = bind(server_fd, (const struct sockaddr *)server_addr, sizeof(*server_addr));
+    if (bind_result == -1)
+    {
+        perror("bind failed");
+        if (server_fd)
+            close(server_fd);
+        return -1;
+    }
+
+    return server_fd;
+}
+
 int main(int argc, char *argv[])
 {
     struct sockaddr_in server_addr = {0};
@@ -8,20 +31,9 @@ int main(int argc, char *argv[])
     server_addr.sin_addr.s_addr = INADDR_ANY; // Listen on all interfaces
     server_addr.sin_port = htons(PORT);
 
-    // Create socket
-    int server_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    int server_fd = init_socket(&server_addr);
     if (server_fd == -1)
     {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    // Bind socket to the address
-    int bind_result = bind(server_fd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
-    if (bind_result == -1)
-    {
-        perror("bind failed");
-        close(server_fd);
         exit(EXIT_FAILURE);
     }
 
@@ -39,23 +51,29 @@ int main(int argc, char *argv[])
         if (recv_len > 0)
         {
             response_buffer[recv_len] = '\0'; // Null-terminate the received data
-            printf("Received message from client:");
-
-            for (ssize_t i = 0; i < recv_len; i++)
-            {
-                printf(" %02x", (unsigned char)response_buffer[i]);
-            }
-            printf("\n");
-
             struct dns_header *header = (struct dns_header *)response_buffer;
+
+            printf("Received message from client.");
+
+            // // Print the raw bytes in hex
+            // for (ssize_t i = 0; i < recv_len; i++)
+            // {
+            //     printf(" %02x", (unsigned char)response_buffer[i]);
+            // }
+            // printf("\n");
+
             char domain_name[256] = {0};
             domain_name[0] = '\0';
-            int offset = sizeof(struct dns_header);
-            int bytes_read = parse_domain_name(response_buffer, offset, domain_name, sizeof(domain_name));
+            int bytes_read = parse_domain_name(response_buffer, domain_name, sizeof(domain_name));
             if (bytes_read > 0)
             {
                 printf("Parsed domain name: %s\n", domain_name);
             }
+            else
+            {
+                perror("Failed to parse domain name");
+            }
+            send_response(server_fd, header, &client_addr, client_addr_len);
         }
         else if (recv_len == -1)
         {
@@ -64,8 +82,31 @@ int main(int argc, char *argv[])
     }
 }
 
-int parse_domain_name(const char *buffer, int offset, char *domain_name, int max_len)
+int send_response(int server_fd, struct dns_header *header, struct sockaddr_in *client_addr, socklen_t client_addr_len)
 {
+
+    struct dns_header response_header = {0};
+    response_header.id = header->id;
+    response_header.flags = htons(0x8180);     // Standard query response, No error
+    response_header.qdcount = header->qdcount; // Echo back the question count
+    response_header.ans_count = htons(1);      // One answer record
+
+    // Answer Record
+    char answer_buffer[512] = {0};
+
+    ssize_t sent_len = sendto(server_fd, &response_header, sizeof(response_header), 0,
+                              (const struct sockaddr *)client_addr, client_addr_len);
+    if (sent_len == -1)
+    {
+        perror("sendto failed");
+        return -1;
+    }
+    return 0;
+}
+
+int parse_domain_name(const char *buffer, char *domain_name, int max_len)
+{
+    int offset = sizeof(struct dns_header);
     unsigned char *start = (unsigned char *)buffer + offset;
     unsigned char *reader = start;
     int section_len = *reader;

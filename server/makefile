@@ -1,10 +1,10 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -g -std=c99
 
 all: server
 
-server: server.c server.h ../base32/base32.c
-	$(CC) $(CFLAGS) -o server server.c ../base32/base32.c
+server: server.c server.h ../lib/base32.c
+	$(CC) $(CFLAGS) -o server server.c ../lib/base32.c
 
 clean:
 	rm -f server
