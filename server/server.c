@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
             {
                 perror("Failed to parse domain name");
             }
-            send_response(server_fd, header, &client_addr, client_addr_len);
+            send_response(server_fd, header, &client_addr, client_addr_len, recv_len);
         }
         else if (recv_len == -1)
         {
@@ -82,19 +82,44 @@ int main(int argc, char *argv[])
     }
 }
 
-int send_response(int server_fd, struct dns_header *header, struct sockaddr_in *client_addr, socklen_t client_addr_len)
+int send_response(int server_fd, struct dns_header *recv_header, struct sockaddr_in *client_addr, socklen_t client_addr_len, ssize_t received_bytes)
 {
+    char packet[512] = {0};
+    int packet_offset = 0;
 
     struct dns_header response_header = {0};
-    response_header.id = header->id;
-    response_header.flags = htons(0x8180);     // Standard query response, No error
-    response_header.qdcount = header->qdcount; // Echo back the question count
-    response_header.ans_count = htons(1);      // One answer record
+    response_header.id = recv_header->id;
+    response_header.flags = htons(0x8180);
+    response_header.qdcount = htons(1); // Echo back the question count
+    response_header.ans_count = htons(1);
+
+    // Copy the header to the packet buffer
+    memcpy(packet + packet_offset, &response_header, sizeof(response_header));
+    packet_offset += sizeof(response_header);
+
+    // Parse question part, echo it back in the request.
+    int question_len = 0;
+    if (received_bytes > (ssize_t)sizeof(struct dns_header))
+    {
+        char *question_ptr = (char *)recv_header + sizeof(struct dns_header);
+        while (question_ptr[question_len] != 0)
+        {
+            question_len++;
+        }
+
+        question_len += 5; // Account for the null byte and QTYPE/QCLASS
+    }
+
+    memcpy(packet + packet_offset, (char *)recv_header + sizeof(struct dns_header), question_len);
+    packet_offset += question_len;
+
+    int answer_len = format_answer("Hello from C2 server!", packet + packet_offset);
+    packet_offset += answer_len;
 
     // Answer Record
     char answer_buffer[512] = {0};
 
-    ssize_t sent_len = sendto(server_fd, &response_header, sizeof(response_header), 0,
+    ssize_t sent_len = sendto(server_fd, packet, packet_offset, 0,
                               (const struct sockaddr *)client_addr, client_addr_len);
     if (sent_len == -1)
     {
@@ -102,6 +127,30 @@ int send_response(int server_fd, struct dns_header *header, struct sockaddr_in *
         return -1;
     }
     return 0;
+}
+
+int format_answer(const char *payload, char *buffer)
+{
+    struct dns_answer answer = {0};
+    answer.name = htons(0xC00C); // Use the same domain from the question section
+    answer.type = htons(16);     // TXT record
+    answer.class = htons(1);
+    answer.ttl = htonl(300); // Set TTL to 300 seconds
+
+    answer.rdlength = htons(strlen(payload) + 1); // +1 for the length byte
+
+    char *rdata_ptr = (char *)&answer.rdata; // Point to the rdata field
+    // Transform the payload into a length-prefixed format for TXT records
+    size_t payload_len = strlen(payload);
+    if (payload_len > 255)
+    {
+        fprintf(stderr, "Payload too long for TXT record\n");
+        return -1;
+    }
+    rdata_ptr[0] = (char)payload_len;                                                   // Length byte
+    memcpy(rdata_ptr + 1, payload, payload_len);                                        // Copy the payload after the length byte
+    memcpy(buffer, &answer, sizeof(answer) - (sizeof(answer.rdata) - payload_len - 1)); // Copy the answer structure without the unused rdata space
+    return sizeof(answer) + payload_len + 1;                                            // Total length of the answer record
 }
 
 int parse_domain_name(const char *buffer, char *domain_name, int max_len)
