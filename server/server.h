@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "../lib/base32.h"
 
 struct dns_header
 {
