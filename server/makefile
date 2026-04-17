@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -g -std=c99
 
 all: server
 
-server: server.c server.h ../lib/base32.c
+server: server.c server.h ../lib/base32.c ../lib/dns_headers.h
 	$(CC) $(CFLAGS) -o server server.c ../lib/base32.c
 
 clean:

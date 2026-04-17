@@ -172,7 +172,7 @@ int format_answer(const char *payload, char *buffer)
     struct dns_answer answer = {0};
     answer.name = htons(0xC00C); // Use the same domain from the question section
     answer.type = htons(16);     // TXT record
-    answer.class = htons(1);
+    answer.cls = htons(1);
     answer.ttl = htonl(300); // Set TTL to 300 seconds
 
     answer.rdlength = htons(strlen(payload) + 1); // +1 for the length byte
