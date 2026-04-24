@@ -38,7 +38,7 @@
  */
 
 /* Get prototype. */
-#include "base32.h"
+#include "lib/base32.h"
 
 /* Get malloc. */
 #include <stdlib.h>

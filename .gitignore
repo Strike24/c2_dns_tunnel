@@ -1,3 +1,12 @@
 server/server
 .vscode
 SUGGESTED_CHANGES.md
+# Ignore build artifacts and temporary files
+*.o
+*.so
+*.exe
+*.dll
+server
+client
+g
+review.md
