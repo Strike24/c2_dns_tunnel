@@ -4,6 +4,7 @@
 #include "dns_protocol.h"
 #include "defs.h"
 #include "networking.h"
+#include <ctype.h>
 
 #include "lib/base32.h"
 

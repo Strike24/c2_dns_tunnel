@@ -97,6 +97,13 @@ int parse_encoded_payload(const char *domain_name, char *payload_buffer, size_t 
         encoded_part[enc_len + i] = '=';
     }
     encoded_part[enc_len + pad_len] = '\0';
+    for (int i = 0; encoded_part[i]; i++)
+    {
+        if (encoded_part[i] != '=')
+        {
+            encoded_part[i] = toupper(encoded_part[i]);
+        }
+    }
 
     int success = base32_decode(encoded_part, strlen(encoded_part), payload_buffer, &buffer_size);
     if (!success)

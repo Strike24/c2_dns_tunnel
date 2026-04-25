@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    int res_length = send_query("nbswc4tumjswc5a.example.com", client_fd, &server_addr, sizeof(server_addr));
+    int res_length = send_query("obuw4zy.example.com", client_fd, &server_addr, sizeof(server_addr), A);
     if (res_length < 0)
     {
         fprintf(stderr, "Failed to send query to the server, exiting.");
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     }
 }
 
-int send_query(const char *payload, int client_fd, struct sockaddr_in *server_addr, socklen_t server_addr_len)
+int send_query(const char *payload, int client_fd, struct sockaddr_in *server_addr, socklen_t server_addr_len, dns_type qtype)
 {
     char packet[512] = {0};
     int packet_offset = 0;
@@ -61,7 +61,7 @@ int send_query(const char *payload, int client_fd, struct sockaddr_in *server_ad
         return ERROR;
     }
 
-    question.qtype = htons(A);
+    question.qtype = htons(qtype);
     question.qclass = htons(1);
 
     // Copy the QNAME to the packet buffer
