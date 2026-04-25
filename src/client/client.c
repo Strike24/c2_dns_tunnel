@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    int res_length = send_query("test", client_fd, &server_addr, sizeof(server_addr));
+    int res_length = send_query("nbswc4tumjswc5a.example.com", client_fd, &server_addr, sizeof(server_addr));
     if (res_length < 0)
     {
         fprintf(stderr, "Failed to send query to the server, exiting.");
@@ -36,12 +36,12 @@ int main(int argc, char *argv[])
     }
 }
 
-int send_query(char *payload, int client_fd, struct sockaddr_in *server_addr, socklen_t server_addr_len)
+int send_query(const char *payload, int client_fd, struct sockaddr_in *server_addr, socklen_t server_addr_len)
 {
     char packet[512] = {0};
     int packet_offset = 0;
 
-    // --- Create header & copy to packet ---
+    // Create header & copy to packet
     dns_header query_header = {0};
     query_header.id = htons(rand() % 65536); // Random ID
     query_header.flags = htons(0x0100);      // Standard query
@@ -50,15 +50,24 @@ int send_query(char *payload, int client_fd, struct sockaddr_in *server_addr, so
     // Copy the header to the packet buffer
     memcpy(packet, &query_header, sizeof(query_header));
 
-    packet_offset += sizeof(query_header);
+    packet_offset += sizeof(dns_header);
 
     // Question section
-    dns_question question = {0};
-    snprintf(question.qname, sizeof(question.qname), "test.example.com");
+    dns_question_attr question = {0};
+    char *qname_ptr = encode_qname(payload);
+    if (qname_ptr == NULL)
+    {
+        fprintf(stderr, "Failed to encode QNAME");
+        return ERROR;
+    }
+
     question.qtype = htons(A);
     question.qclass = htons(1);
 
-    // Copy the question to the packet buffer
+    // Copy the QNAME to the packet buffer
+    memcpy(packet + packet_offset, qname_ptr, strlen(qname_ptr) + 1); // +1 for the null byte
+    packet_offset += strlen(qname_ptr) + 1;
+    // Copy the question attributes to the packet buffer
     memcpy(packet + packet_offset, &question, sizeof(question));
     packet_offset += sizeof(question);
 
@@ -67,7 +76,9 @@ int send_query(char *payload, int client_fd, struct sockaddr_in *server_addr, so
     if (sent_len == -1)
     {
         perror("sendto failed");
+        free(qname_ptr);
         return ERROR;
     }
+    free(qname_ptr);
     return 0;
 }

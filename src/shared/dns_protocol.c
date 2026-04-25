@@ -43,13 +43,14 @@ int format_answer_section(const char *payload, char *buffer, size_t buffer_size,
     return total_answer_len;
 }
 
-int encode_qname(const char *domain_name, char *buffer, size_t buffer_size)
+char *encode_qname(const char *domain_name)
 {
+    char buffer[MAX_DOMAIN_LEN + 2] = {0}; // +2 for the length byte and null terminator
     size_t domain_len = strlen(domain_name);
-    if (domain_len + 2 > buffer_size) // +2 for the length byte and null terminator
+    if (domain_len + 2 > sizeof(buffer))
     {
         fprintf(stderr, "Buffer size too small for encoded QNAME\n");
-        return ERROR;
+        return NULL;
     }
 
     const char *label_start = domain_name;
@@ -68,7 +69,7 @@ int encode_qname(const char *domain_name, char *buffer, size_t buffer_size)
         if (label_len > MAX_LABEL_LEN)
         {
             fprintf(stderr, "Label length exceeds maximum allowed length\n");
-            return ERROR;
+            return NULL;
         }
 
         *buffer_ptr++ = (char)label_len;            // Write the length byte
@@ -84,9 +85,17 @@ int encode_qname(const char *domain_name, char *buffer, size_t buffer_size)
             break; // No more labels
         }
     }
+    *buffer_ptr++ = 0;                     // Null byte to terminate the QNAME
+    int encoded_len = buffer_ptr - buffer; // Total length of the encoded QNAME
 
-    *buffer_ptr++ = 0; // Null byte to terminate the QNAME
-    return buffer_ptr - buffer;
+    char *encode_qname = calloc(1, encoded_len);
+    if (encode_qname == NULL)
+    {
+        fprintf(stderr, "Failed to allocate memory for encoded QNAME\n");
+        return NULL;
+    }
+    memcpy(encode_qname, buffer, encoded_len);
+    return encode_qname;
 }
 
 int parse_qname(const char *qname, char *buffer, size_t buffer_size)

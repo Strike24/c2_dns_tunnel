@@ -23,10 +23,9 @@ typedef struct
 
 typedef struct
 {
-    char qname[MAX_DOMAIN_LEN];
     uint16_t qtype;
     uint16_t qclass;
-} __attribute__((packed)) dns_question;
+} __attribute__((packed)) dns_question_attr;
 
 typedef struct
 {
@@ -44,20 +43,13 @@ typedef enum
     TXT = 16
 } dns_type;
 
-/* Formats the answer section of a DNS response based on the provided payload and answer type.
- * @param payload The data to be included in the RDATA field of the DNS answer.
- * @param buffer The buffer where the formatted DNS answer will be stored.
- * @param buffer_size The size of the buffer to ensure it can accommodate the formatted answer.
- * @param ans_type The DNS record type (e.g., A, TXT) to be set in the answer section.
- * @return The total length of the formatted DNS answer on success, or an error code on failure.
- */
+// Formats the answer section of a DNS response based on the provided payload and answer type.
 int format_answer_section(const char *payload, char *buffer, size_t buffer_size, dns_type ans_type);
 
-/* Parses the QNAME (domain name) from a DNS query buffer and extracts the domain name, formatted as a standard dot-separated string.
- * @param qname The QNAME (domain name) to be parsed.
- * @param domain_name The output parameter where the extracted domain name will be stored.
- * @param buffer_size The size of the domain_name buffer to ensure it can accommodate the extracted domain name.
- * @return The number of bytes read on success, or an error code on failure.
- */
+// Parses the QNAME (domain name) from a DNS query buffer and extracts the domain name, formatted as a standard dot-separated string.
 int parse_qname(const char *qname, char *buffer, size_t buffer_size);
+
+// Encodes a standard dot-separated domain name into the DNS QNAME format, which includes length bytes for each label.
+// The caller is responsible for freeing the returned string allocated by this function.
+char *encode_qname(const char *domain_name);
 #endif // DNS_HEADERS_H
