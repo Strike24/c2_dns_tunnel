@@ -6,7 +6,5 @@ SUGGESTED_CHANGES.md
 *.so
 *.exe
 *.dll
-server
-client
-g
+
 review.md

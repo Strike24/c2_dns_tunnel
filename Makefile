@@ -12,16 +12,20 @@ SERVER_OBJS = $(SERVER_SRCS:.c=.o)
 
 all: client server
 
-client: $(CLIENT_OBJS)
+client: bin/client
+
+server: bin/server
+
+bin/client: $(CLIENT_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-server: $(SERVER_OBJS)
+bin/server: $(SERVER_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f client server $(CLIENT_OBJS) $(SERVER_OBJS)
+	rm -f bin/client bin/server $(CLIENT_OBJS) $(SERVER_OBJS)
 
 .PHONY: all clean
