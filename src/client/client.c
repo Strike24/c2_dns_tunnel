@@ -53,6 +53,14 @@ int send_query(char *payload, int client_fd, struct sockaddr_in *server_addr, so
     packet_offset += sizeof(query_header);
 
     // Question section
+    dns_question question = {0};
+    snprintf(question.qname, sizeof(question.qname), "test.example.com");
+    question.qtype = htons(A);
+    question.qclass = htons(1);
+
+    // Copy the question to the packet buffer
+    memcpy(packet + packet_offset, &question, sizeof(question));
+    packet_offset += sizeof(question);
 
     ssize_t sent_len = sendto(client_fd, packet, packet_offset, 0,
                               (const struct sockaddr *)server_addr, server_addr_len);

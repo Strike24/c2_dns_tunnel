@@ -56,7 +56,7 @@ int parse_client_query(char *query_buffer, char *payload_buffer)
     printf("Received message from client:\n");
 
     char domain_name[MAX_DOMAIN_LEN] = {0};
-    int bytes_read = parse_qname(query_buffer, domain_name);
+    int bytes_read = parse_qname(query_buffer, domain_name, MAX_DOMAIN_LEN);
     if (bytes_read < 0)
         return ERROR;
 

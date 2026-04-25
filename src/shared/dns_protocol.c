@@ -6,6 +6,7 @@ int format_answer_section(const char *payload, char *buffer, size_t buffer_size,
     uint16_t rdata_length = payload_len + 1; // +1 for the length byte.
     uint16_t total_answer_len = sizeof(dns_answer) + rdata_length;
     dns_answer *answer = malloc(total_answer_len);
+    memset(answer, 0, total_answer_len); // Zero out the allocated memory
     if (answer == NULL)
     {
         fprintf(stderr, "Failed to allocate memory for DNS answer\n");
@@ -13,7 +14,7 @@ int format_answer_section(const char *payload, char *buffer, size_t buffer_size,
     }
 
     answer->name = htons(DNS_PTR_OFFSET); // Use the same domain from the question section
-    answer->type = htons(ans_type);       // TODO - TXT FOR NOW, DYNAMICLY CHANGED BASED ON CONTEXT.
+    answer->type = htons(ans_type);
     answer->cls = htons(1);
     answer->ttl = htonl(300);
     answer->rdlength = htons(rdata_length);
@@ -42,10 +43,56 @@ int format_answer_section(const char *payload, char *buffer, size_t buffer_size,
     return total_answer_len;
 }
 
-int parse_qname(const char *buffer, char *domain_name)
+int encode_qname(const char *domain_name, char *buffer, size_t buffer_size)
+{
+    size_t domain_len = strlen(domain_name);
+    if (domain_len + 2 > buffer_size) // +2 for the length byte and null terminator
+    {
+        fprintf(stderr, "Buffer size too small for encoded QNAME\n");
+        return ERROR;
+    }
+
+    const char *label_start = domain_name;
+    char *buffer_ptr = buffer;
+
+    // Loop through each label, add length byte before the label, and copy the label to the buffer
+    while (*label_start)
+    {
+        const char *label_end = strchr(label_start, '.');
+        if (!label_end)
+        {
+            label_end = domain_name + domain_len; // Point to the end of the string
+        }
+
+        size_t label_len = label_end - label_start;
+        if (label_len > MAX_LABEL_LEN)
+        {
+            fprintf(stderr, "Label length exceeds maximum allowed length\n");
+            return ERROR;
+        }
+
+        *buffer_ptr++ = (char)label_len;            // Write the length byte
+        memcpy(buffer_ptr, label_start, label_len); // Copy the label
+        buffer_ptr += label_len;
+
+        if (*label_end == '.')
+        {
+            label_start = label_end + 1; // Move to the start of the next label
+        }
+        else
+        {
+            break; // No more labels
+        }
+    }
+
+    *buffer_ptr++ = 0; // Null byte to terminate the QNAME
+    return buffer_ptr - buffer;
+}
+
+int parse_qname(const char *qname, char *buffer, size_t buffer_size)
 {
     int offset = sizeof(dns_header);
-    unsigned char *start = (unsigned char *)buffer + offset;
+    unsigned char *start = (unsigned char *)qname + offset;
     unsigned char *reader = start;
     int section_len = *reader;
     int qname_len = 0;
@@ -54,18 +101,18 @@ int parse_qname(const char *buffer, char *domain_name)
     {
         reader++;
 
-        if ((long unsigned int)(qname_len + section_len) >= MAX_DOMAIN_LEN)
+        if ((long unsigned int)(qname_len + section_len) >= buffer_size)
         {
-            fprintf(stderr, "Domain name too long\n");
+            fprintf(stderr, "Buffer too small for domain name\n");
             return ERROR;
         }
-        strncat(domain_name, (char *)reader, section_len);
+        strncat(buffer, (char *)reader, section_len);
         qname_len += section_len;
         reader += section_len;
         if (*reader != 0)
         {
-            domain_name[qname_len] = '.';
-            domain_name[qname_len + 1] = '\0';
+            buffer[qname_len] = '.';
+            buffer[qname_len + 1] = '\0';
             qname_len++;
         }
         section_len = *reader;

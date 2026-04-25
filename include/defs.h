@@ -7,6 +7,7 @@
 #define DNS_TYPE_TXT 16
 #define DNS_TYPE_A 1
 #define MAX_DOMAIN_LEN 255
+#define MAX_LABEL_LEN 63
 
 #define ERROR -1
 

@@ -6,5 +6,5 @@ SUGGESTED_CHANGES.md
 *.so
 *.exe
 *.dll
-
+bin/
 review.md
